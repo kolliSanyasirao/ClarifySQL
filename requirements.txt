@@ -1,3 +1,4 @@
+huggingface_hub>=0.30.0
 absl-py==1.4.0
 ai21==1.1.4
 aiohappyeyeballs==2.6.1
