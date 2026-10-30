@@ -1,53 +1,59 @@
-"""Download and extract the public SPIDER dataset for ClarifySQL."""
+"""Download and safely extract the public SPIDER dataset for ClarifySQL."""
 
 from __future__ import annotations
 
-import os
 import shutil
 import stat
+import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from huggingface_hub import hf_hub_download
-
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 DESTINATION = ROOT / ".vscode" / "combined_data_all" / "spider"
-REPOSITORY_ID = os.getenv(
-    "SPIDER_HF_REPO",
-    "sanyasirao87/clarifysql-spider-data",
+DOWNLOAD_URL = (
+    "https://huggingface.co/datasets/"
+    "sanyasirao87/clarifysql-spider-data/resolve/main/spider_data.zip?download=true"
 )
-ARCHIVE_NAME = "spider_data.zip"
 
 
-def main() -> None:
-    tables_file = DESTINATION / "tables.json"
-    database_dir = DESTINATION / "database"
+def download_archive(archive_path: Path) -> None:
+    print("Downloading SPIDER dataset from Hugging Face...")
+    with requests.get(
+        DOWNLOAD_URL,
+        stream=True,
+        allow_redirects=True,
+        timeout=(30, 180),
+    ) as response:
+        response.raise_for_status()
+        total_bytes = 0
+        with archive_path.open("wb") as output:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    output.write(chunk)
+                    total_bytes += len(chunk)
+                    print(
+                        f"\rDownloaded {total_bytes / (1024 * 1024):.1f} MB",
+                        end="",
+                        flush=True,
+                    )
+    print("\nDownload complete.")
 
-    if tables_file.is_file() and database_dir.is_dir():
-        print(f"SPIDER dataset already exists at {DESTINATION}")
-        return
 
-    print(f"Downloading {ARCHIVE_NAME} from {REPOSITORY_ID}...")
-    archive_path = hf_hub_download(
-        repo_id=REPOSITORY_ID,
-        filename=ARCHIVE_NAME,
-        repo_type="dataset",
-    )
-
+def extract_archive(archive_path: Path) -> int:
     DESTINATION.mkdir(parents=True, exist_ok=True)
     destination_root = DESTINATION.resolve()
     extracted_files = 0
 
     print(f"Extracting SPIDER dataset into {DESTINATION}...")
-
     with zipfile.ZipFile(archive_path, "r") as archive:
         for info in archive.infolist():
             member = PurePosixPath(info.filename)
             parts = member.parts
 
-            # The uploaded archive has a top-level spider_data/ directory.
-            # Ignore __MACOSX metadata and anything outside spider_data/.
+            # The uploaded ZIP has a top-level spider_data/ directory.
+            # Ignore macOS metadata and any files outside spider_data/.
             if not parts or parts[0] != "spider_data":
                 continue
             relative_parts = parts[1:]
@@ -80,21 +86,32 @@ def main() -> None:
                 shutil.copyfileobj(source, output, length=1024 * 1024)
             extracted_files += 1
 
+    tables_file = DESTINATION / "tables.json"
+    database_dir = DESTINATION / "database"
     if not tables_file.is_file():
-        raise RuntimeError(
-            f"SPIDER extraction finished, but tables.json is missing: {tables_file}"
-        )
-
+        raise RuntimeError(f"tables.json is missing after extraction: {tables_file}")
     if not database_dir.is_dir():
-        raise RuntimeError(
-            f"SPIDER extraction finished, but database/ is missing: {database_dir}"
-        )
+        raise RuntimeError(f"database/ is missing after extraction: {database_dir}")
 
     database_count = sum(1 for item in database_dir.iterdir() if item.is_dir())
     print("SPIDER dataset is ready.")
     print(f"Extracted files: {extracted_files}")
     print(f"Database folders: {database_count}")
     print(f"Dataset path: {DESTINATION}")
+    return extracted_files
+
+
+def main() -> None:
+    tables_file = DESTINATION / "tables.json"
+    database_dir = DESTINATION / "database"
+    if tables_file.is_file() and database_dir.is_dir():
+        print(f"SPIDER dataset already exists at {DESTINATION}")
+        return
+
+    with tempfile.TemporaryDirectory(prefix="clarifysql-spider-") as temp_dir:
+        archive_path = Path(temp_dir) / "spider_data.zip"
+        download_archive(archive_path)
+        extract_archive(archive_path)
 
 
 if __name__ == "__main__":
