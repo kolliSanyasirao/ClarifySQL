@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+// Vercel: set VITE_API_BASE_URL to your deployed Render backend URL.
+// Local development falls back to the local FastAPI server.
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+
 const categories = [
   { name: "SELECT Column", type: "Ambiguous", status: "completed" },
   { name: "VALUES Across Columns", type: "Ambiguous", status: "completed" },
@@ -132,7 +138,7 @@ function Dashboard() {
   const loadCategories = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/categories"
+        `${API_BASE_URL}/api/categories`
       );
 
       if (!response.ok) {
@@ -905,7 +911,7 @@ function RunExperiment() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/chat",
+        `${API_BASE_URL}/api/chat`,
         {
           method: "POST",
           headers: {
@@ -1407,7 +1413,7 @@ function Results() {
     setSelected(0);
 
     fetch(
-      `http://127.0.0.1:8000/api/results?category=${encodeURIComponent(
+      `${API_BASE_URL}/api/results?category=${encodeURIComponent(
         category
       )}`
     )
