@@ -1,0 +1,25 @@
+# Python environments and cache
+.venv/
+__pycache__/
+**/__pycache__/
+**/__cache__/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+.env
+.vscode/.env
+
+# SPIDER dataset
+.vscode/combined_data_all/
+.vscode/spider_data.zip
+
+# Generated outputs
+.vscode/web-runs/
+.vscode/output*/
+
+# Logs
+*.log
