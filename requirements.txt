@@ -1,4 +1,4 @@
-huggingface_hub>=0.30.0
+huggingface-hub==0.10.1
 absl-py==1.4.0
 ai21==1.1.4
 aiohappyeyeballs==2.6.1
@@ -60,7 +60,6 @@ h11==0.14.0
 h5py==3.10.0
 httpcore==0.17.2
 httpx==0.24.1
-
 idna==3.4
 importlib-metadata==6.11.0
 iniconfig==2.0.0
